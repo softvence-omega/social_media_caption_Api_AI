@@ -62,7 +62,6 @@ env.bak/
 venv.bak/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -76,3 +75,4 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
+##########
