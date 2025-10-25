@@ -1,43 +1,72 @@
 #app/services/captions_service.py
-
+import re
 import json
 import base64
 from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+from typing import List
 from app.core.config import OPENAI_API_KEY
 from app.models.captions import CaptionInput, EditRequest
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
+class CaptionFormat(BaseModel):
+    caption: str = Field(..., description="Love yourself first before prioritising other")
+    hashtags: List[str] = Field(..., description="Relevant hashtags like #selflove, #loveyourself, #love")
 # ---------------------------
 # 1️⃣ General caption generator
 # ---------------------------
-async def generate_caption(prompt: str, max_tokens: int = 150):
-    """
-    Generate a social media caption quickly using AsyncOpenAI.
-    """
+async def generate_caption(prompt: str, max_tokens: int = 1550):
     try:
-        response = await client.chat.completions.create(
+        response = await client.responses.parse(
             model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a social media caption generator. "
-                        "Respond only in JSON format: "
-                        '{"caption": "your caption here", "hashtags": ["#tag1", "#tag2"]}'
-                    )
-                },
-                {"role": "user", "content": prompt}
+            input=[
+                {"role": "system", "content": "You are a creative social media caption generator."},
+                {"role": "user", "content": prompt},
             ],
-            temperature=0.7,
-            max_tokens=max_tokens
+            text_format=CaptionFormat,  # ✅ Must match the class name exactly
+            max_output_tokens=max_tokens,
         )
-        content = response.choices[0].message.content
-        print("[LLM RAW OUTPUT]", content)
-        return json.loads(content)
+
+        # ✅ Proper access for parsed response
+        result= response.output_parsed
+        print(result)
+        return {
+            "caption": result.caption,
+            "hashtags": result.hashtags,
+        }
+
     except Exception as e:
-        print(f"Error generating caption: {e}")
+        print(f"❌ [ERROR in LLM caption generation]: {e}")
         return {"caption": "", "hashtags": []}
+# async def generate_caption(prompt: str, max_tokens: int = 150):
+#     """
+#     Generate a social media caption quickly using AsyncOpenAI.
+#     """
+#     try:
+#         response = await client.chat.completions.create(
+#             model="gpt-4o-mini",
+#             messages=[
+#                 {
+#                     "role": "system",
+#                     "content": (
+#                         "You are a social media caption generator. "
+#                         "Respond only in JSON format: "
+#                         '{"caption": "your caption here", "hashtags": ["#tag1", "#tag2"]}'
+#                     )
+#                 },
+#                 {"role": "user", "content": prompt}
+#             ],
+#             temperature=0.7,
+#             max_tokens=max_tokens
+#         )
+#         content = response.choices[0].message.content
+#         print("[LLM RAW OUTPUT]", content)
+#     #     return json.loads(content)
+    # except Exception as e:
+    #     print(f"Error generating caption: {e}")
+    #     return {"caption": "", "hashtags": []}
+         
 
 
 # ---------------------------
@@ -61,7 +90,7 @@ async def describe_image(image_path: str, max_tokens: int = 100):
                         {
                             "type": "text",
                             "text": (
-                                "Analyze the image and describe it in 1–2 short sentences, "
+                                "Analyze the image and describe it in 2–3 short sentences, "
                                 "as if writing a natural social media caption context. "
                                 "Avoid technical terms and keep it warm and human-like."
                             ),
@@ -98,7 +127,7 @@ You are an AI social media assistant for small business owners.
 Your tasks:
 
 -Understand the content, tone, and business type.
--Write a short, engaging caption (1–3 sentences) that fits the platform{platform}.
+-Write a short, engaging caption (2–4 sentences) that fits the platform{platform}.
 -Post type: {input_data.post_type}, Topic: {input_data.post_topic}
 -Keep it modern, relatable, and relevant. Add a call-to-action if suitable.
 -Include 5–10 trending or niche hashtags in JSON format.
@@ -120,12 +149,16 @@ def build_edit_prompt(edit_data: EditRequest) -> str:
     }
     instruction = edit_map.get(edit_data.edit_type.lower(), "Improve the caption to make it more engaging.")
 
-    return (
-        f"Edit the social media caption for {edit_data.platform}.\n"
-        f"Original caption: \"{edit_data.original_caption}\"\n"
-        f"{instruction}\n"
-        "Include 5-10 trending or niche hashtags in JSON format"
-        "Output JSON: {'caption': 'edited caption', 'hashtags': ['#tag1', '#tag2',...,...,...]}."
-    )
+    
+    prompt= f"""Edit the social media caption for {edit_data.platform}.\n
+        -Original caption: \"{edit_data.original_caption}\"\n
+        -{instruction}:\n
+        -Include 5-10 trending or niche hashtags in JSON format
+        -Json format is given below as reference:
+        -Output JSON: {{
+            'caption': 'edited caption', 
+            'hashtags': ['#tag1', '#tag2',...,...,...]
+        }}."""
+    return prompt 
 
 
