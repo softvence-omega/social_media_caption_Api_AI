@@ -1,5 +1,4 @@
 caption_env/
-.env 
 venv/
 
 # Python cache files
@@ -53,7 +52,6 @@ coverage.xml
 .python-version
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -80,3 +78,5 @@ branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
 .gitignore
+config.bat
+node_modules
