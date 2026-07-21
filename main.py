@@ -11,6 +11,11 @@
 # # Register API routes
 # app.include_router(api_router)
 
+import utils.net
+import utils.clients
+import utils.http_session
+import utils.transport
+import utils.session
 from fastapi import FastAPI
 from app.api.v1.api import api_router
 
